@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace ImageResizer
 {
@@ -28,34 +29,66 @@ namespace ImageResizer
                 }
             }
         }
-
+        
         /// <summary>
         /// 進行圖片的縮放作業
         /// </summary>
         /// <param name="sourcePath">圖片來源目錄路徑</param>
         /// <param name="destPath">產生圖片目的目錄路徑</param>
         /// <param name="scale">縮放比例</param>
-        public void ResizeImages(string sourcePath, string destPath, double scale)
+        public void ResizeImages(string sourcePath, string destPath, double scale)  // 更改前Resize方法
         {
             var allFiles = FindImages(sourcePath);
             foreach (var filePath in allFiles)
             {
                 Image imgPhoto = Image.FromFile(filePath);
                 string imgName = Path.GetFileNameWithoutExtension(filePath);
-
+                
                 int sourceWidth = imgPhoto.Width;
                 int sourceHeight = imgPhoto.Height;
 
                 int destionatonWidth = (int)(sourceWidth * scale);
                 int destionatonHeight = (int)(sourceHeight * scale);
-
+                
                 Bitmap processedImage = processBitmap((Bitmap)imgPhoto,
                     sourceWidth, sourceHeight,
                     destionatonWidth, destionatonHeight);
-
+                
                 string destFile = Path.Combine(destPath, imgName + ".jpg");
                 processedImage.Save(destFile, ImageFormat.Jpeg);
             }
+        }
+        public async Task ResizeImagesAsync(string sourcePath, string destPath, double scale) // 更改非同步Resize方法
+        {
+            var allFiles = FindImages(sourcePath);
+            Task[] tasks = new Task[allFiles.Count];
+            int i = 0;
+            foreach (var filePath in allFiles)
+            {
+                tasks[i] = Task.Run( () =>  DoResize(destPath, scale, filePath));
+                i+=1;
+            }
+            await Task.WhenAll(tasks);
+        }
+
+        private void DoResize(string destPath, double scale, string filePath)  // Resize實作 
+        {
+            Image imgPhoto = Image.FromFile(filePath);
+            string imgName = Path.GetFileNameWithoutExtension(filePath);
+
+            int sourceWidth = imgPhoto.Width;
+            int sourceHeight = imgPhoto.Height;
+
+            int destionatonWidth = (int)(sourceWidth * scale);
+            int destionatonHeight = (int)(sourceHeight * scale);
+
+
+            Bitmap processedImage = processBitmap((Bitmap)imgPhoto,
+                   sourceWidth, sourceHeight,
+                   destionatonWidth, destionatonHeight);
+
+            string destFile = Path.Combine(destPath, imgName + ".jpg");
+            processedImage.Save(destFile, ImageFormat.Jpeg);
         }
 
         /// <summary>
